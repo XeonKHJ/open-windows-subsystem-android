@@ -131,61 +131,86 @@ Windows x86_64
 
 ## M0 / R0：实验平台与测试基线
 
-### Objective
-
-建立可重复的 Android x86_64 Native Bridge 实验环境，并提供 x86_64 对照库与 ARM64 目标库。
-
-### Input
-
-- 可访问的 Android x86_64 AOSP 源码与构建环境；
-- 可重复启动的 Hyper-V Android x86_64 Guest；
-- ADB、`logcat`、tombstone 收集链路；
-- 固定的构建主机工具链版本。
-
-### Work
-
-1. 固定 AOSP revision、build target、kernel revision 与 Hyper-V VM 基线；
-2. 建立 `nativebridge-smoke` APK：Java/Kotlin 调用层保持一致；
-3. 构建三个 native 变体：
-   - `lib/x86_64/libdemo.so`：对照组；
-   - `lib/arm64-v8a/libdemo.so`：翻译目标；
-   - 可选 `host` 单元测试库：脱离 Android 验证算法；
-4. 实现测试命令与日志归档脚本；
-5. 文档化 build、boot、install、run、collect 的完整流程。
-
-### Output
+R0 分为三个有序子阶段，每个子阶段必须通过其 Gate 后才能开始下一个。**仅完成 AOSP 编译不满足 R0 Gate**；进入 R1 的条件是：自行编译的 x86_64 Android 镜像能在 Hyper-V 中可靠启动，并通过 x86_64 JNI 直接调用验证。详见可执行计划 `docs/exec-plans/active/arm64-native-bridge-r0-r1.md` 中的各子阶段字段。
 
 ```text
-nativebridge/
-  tests/apk/nativebridge-smoke/
-  tests/native/demo/
-  docs/environment-baseline.md
-  docs/test-protocol.md
+R0.0 — AOSP x86_64 构建基线
+R0.1 — Hyper-V Android Guest 启动基线      （需要 R0.0）
+R0.2 — ADB、诊断与 x86_64 JNI 基线         （需要 R0.1）
 ```
 
-### Evidence
+### R0.0 Objective
 
-- Android Guest 的启动日志；
-- `adb install` 成功记录；
-- x86_64 对照库返回 `nativeAdd(40, 2) = 42` 的测试输出；
-- `logcat`、tombstone、宿主日志的归档样本。
+建立可重复的 AOSP x86_64 构建：固定 AOSP 分支/tag/manifest revision；选定并记录标准 x86_64 `userdebug` 产品目标作为**构建/用户空间验证基线**（注意：此目标不自动等同于 Hyper-V 产品目标）；两次干净构建、比对镜像哈希；记录环境指纹。参见 `docs/aosp-hyperv-bringup.md` 了解构建基线与 Hyper-V 产品目标的区别。
 
-### Gate
+### R0.0 Input
 
-- 在干净 VM 快照上连续 10 次完成：启动 Guest → 安装 APK → 运行 x86_64 对照 JNI 测试；
-- 成功率至少 9/10；
-- 所有失败可由日志定位到 boot、ADB、APK、ART 或 native crash 中的一个分类。
+- 支持 64 位的 Linux AOSP 构建主机（推荐 Ubuntu 20.04 LTS 或 22.04 LTS）；
+- `repo`、构建依赖工具链及 JDK，版本全部固定并记录；
+- 足够的磁盘（≥400 GB）、内存（≥16 GB）和网络访问。
 
-### Rollback / Stop rule
+### R0.0 Gate
+
+- 两次干净构建均无报错完成；
+- 两次构建产出镜像的 SHA-256 一致（或每个差异均有书面说明）；
+- `docs/environment-baseline.md` 包含 AOSP revision、产品目标、内核版本、宿主工具版本、构建命令和镜像哈希；
+- 文档明确说明所选 x86_64 目标是**开发/验证基线**，并非 Hyper-V 产品目标。
+
+---
+
+### R0.1 Objective
+
+在 Hyper-V 中启动 R0.0 编译产出的 Android x86_64 Guest，可靠到达 `sys.boot_completed=1`。**必须在声称启动成功之前**定义并记录 Hyper-V 启动链与镜像交付设计（内核、initramfs、分区布局、虚拟磁盘方案、控制台/日志、存储/网络设备）。
+
+### R0.1 Input
+
+- R0.0 Gate 已通过；
+- 已启用 Hyper-V 的 Windows 宿主机；
+- R0.0 产出的 AOSP x86_64 镜像（已哈希）。
+
+### R0.1 Gate
+
+- `docs/hyperv-boot-design.md` 已存在并经过评审，早于任何启动结果声明；
+- 十次干净启动中至少 9 次达到 `sys.boot_completed=1`；
+- 每次失败均归类为 `hyper-v`、`kernel`、`android-init` 或 `other`；
+- 保留有内核早期日志、Android init 日志和宿主 Hyper-V 诊断的证据文件。
+
+---
+
+### R0.2 Objective
+
+建立稳定的 ADB 连接、单命令 build/install/run/collect/reset 工作流；验证纯 Java/Kotlin APK 可运行；验证 x86_64 JNI `nativeAdd(40, 2)` 确定性返回 `42`。
+
+### R0.2 Input
+
+- R0.1 Gate 已通过；
+- ADB 宿主工具（版本已记录）；
+- `nativebridge/tests/apk/nativebridge-smoke/` 源码（本子阶段可同步创建）。
+
+### R0.2 Gate
+
+- ADB 在每次干净重置后均无需手动操作即可连接；
+- 单命令工作流可产出包含所有必要文件的 artifact 目录；
+- 纯 Java/Kotlin APK 成功运行；
+- x86_64 JNI Smoke APK 在 10 次干净基线尝试中至少 9 次返回 `nativeAdd(40, 2) = 42`，且日志记录 ABI 为 `x86_64`；
+- 每次失败均归类为 `adb`、`apk-install`、`art-jni`、`native-crash`、`boot` 或 `other`；
+- `docs/test-protocol.md` 已存在并经过评审。
+
+---
+
+### R0 共同 Rollback / Stop rule
 
 - Guest 启动或 APK 基线不稳定时，冻结 Native Bridge 开发；
-- 仅修复平台复现性，直到 Gate 通过。
+- 仅修复平台复现性，直到对应子阶段 Gate 通过；
+- 不允许以"本机可用"的截图或口头声明代替可检查的证据文件。
 
-### Risks
+### R0 Risks
 
-- AOSP x86_64 / Hyper-V 设备适配不稳定；
-- 构建环境漂移；
-- 测试 APK 同时携带多个 ABI 时的 ABI 选择不可控。
+- 标准 AOSP x86_64 目标可能需要内核配置修改才能在 Hyper-V 下启动；
+- 构建环境漂移（工具版本、网络依赖）；
+- 测试 APK 同时携带多个 ABI 时的 ABI 选择不可控；
+- Hyper-V Generation 2 UEFI/Secure Boot 可能需要额外配置；
+- ADB over Hyper-V 网络可能需要特定 VM Switch 配置。
 
 ---
 
@@ -197,7 +222,7 @@ nativebridge/
 
 ### Input
 
-- R0 Gate 已通过；
+- R0.0、R0.1、R0.2 Gate 均已通过（见 `docs/exec-plans/active/arm64-native-bridge-r0-r1.md`）；
 - 目标 AOSP 分支的 `NativeBridgeItf` 接口定义已冻结并记录；
 - `nativebridge-smoke` 的 ARM64 库样本。
 

@@ -23,6 +23,7 @@ Build an Android runtime for Windows with an x86_64 Android guest on Hyper-V. Th
 | Principles and decision rules | `docs/design-docs/core-beliefs.md` |
 | Documentation index and status | `docs/design-docs/index.md` |
 | Active execution work | `docs/exec-plans/active/arm64-native-bridge-r0-r1.md` |
+| R0 bringup procedure and evidence checklist | `docs/aosp-hyperv-bringup.md` |
 | Full long-range Native Bridge plan | `docs/arm64-native-bridge-harness-plan.md` |
 | Quality gates | `docs/QUALITY_SCORE.md` |
 | Reliability requirements | `docs/RELIABILITY.md` |

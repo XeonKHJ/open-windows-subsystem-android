@@ -76,4 +76,12 @@ APK-native input is untrusted. ELF parsing validates all externally controlled o
 
 ## Current stage
 
-The active scope is R0/R1: establish a reproducible x86_64 Android test environment and prove that a controlled `arm64-v8a/libdemo.so` load and JNI-symbol request reaches `libowsa_nativebridge.so`. See the active execution plan.
+The active scope is R0/R1. R0 is divided into three ordered sub-stages:
+
+- **R0.0** — Establish a reproducible AOSP x86_64 build baseline with a pinned manifest and recorded environment.
+- **R0.1** — Define the Hyper-V boot-chain design and boot the self-built Android x86_64 image reliably in Hyper-V.
+- **R0.2** — Validate stable ADB connectivity, one-command test workflow, and x86_64 JNI (`nativeAdd(40,2)=42`).
+
+R1 cannot start until all three R0 sub-stages pass. Successful AOSP compilation alone is not sufficient; the gate requires a self-built x86_64 Android image that reliably boots in Hyper-V and passes direct x86_64 JNI validation.
+
+After R0 is complete, R1 proves that a controlled `arm64-v8a/libdemo.so` load and JNI-symbol request reaches `libowsa_nativebridge.so`. See the active execution plan and `docs/aosp-hyperv-bringup.md`.

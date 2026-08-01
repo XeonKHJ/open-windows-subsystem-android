@@ -6,7 +6,8 @@ This directory is the durable, versioned record for design decisions. Agents sho
 |---|---|---|
 | `core-beliefs.md` | Non-negotiable engineering principles and decision rules | Active |
 | `../arm64-native-bridge-harness-plan.md` | Long-range R0–R5 Native Bridge research roadmap | Active |
-| `../exec-plans/active/arm64-native-bridge-r0-r1.md` | Executable short-horizon plan for the current milestone | Active |
+| `../exec-plans/active/arm64-native-bridge-r0-r1.md` | Executable short-horizon plan for the current milestone (R0.0/R0.1/R0.2/R1) | Active |
+| `../aosp-hyperv-bringup.md` | Practical R0 bringup procedure and evidence checklist for operators and agents | Active |
 | `../QUALITY_SCORE.md` | Measurable quality gates and scorecard | Active |
 | `../RELIABILITY.md` | Test, repeatability, diagnostics, and recovery requirements | Active |
 | `../SECURITY.md` | Security invariants for ELF loading, generated code, and logs | Active |
