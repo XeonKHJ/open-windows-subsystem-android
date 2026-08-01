@@ -4,7 +4,14 @@
 
 - The active plan must name exact commands for build, install, run, collect, and clean/reset.
 - The environment baseline must record the AOSP revision, Android target, kernel/VM identity, host tool versions, and test APK version.
-- R0 acceptance runs begin from a clean VM snapshot or equivalent reset state.
+- R0.0 acceptance requires two clean builds from the pinned manifest with matching image hashes.
+- R0.1 acceptance runs begin from a clean VM snapshot or equivalent reset state.
+- R0.2 acceptance runs begin from the R0.1 clean-boot reset state.
+- R1 acceptance begins only after R0.0, R0.1, and R0.2 gates are all complete.
+
+## Build baseline vs. product target
+
+The AOSP x86_64 build target selected in R0.0 (e.g., `sdk_phone_x86_64-userdebug` or `aosp_x86_64-userdebug`) is a **development and userspace validation baseline**. It is not automatically a bootable Hyper-V product target. The Hyper-V-specific product target (tentatively `owsa_hyperv_x86_64-userdebug` or equivalent) is a separate decision to be validated and recorded in R0.1. See `docs/aosp-hyperv-bringup.md`.
 
 ## Test ladder
 
@@ -17,6 +24,11 @@
 ## Diagnostics
 
 Every native failure must include a stable `run_id`, build revision, process/package, library, requested ABI, error class, and references to relevant logs. ARM64 execution failures must additionally include PC, instruction bytes, decoded instruction if available, register state, and translator mode.
+
+Failure categories must be classified at the appropriate layer:
+
+- **R0.1 boot failures**: `hyper-v`, `kernel`, `android-init`, `other`.
+- **R0.2 / R1 run failures**: `adb`, `apk-install`, `art-jni`, `native-crash`, `boot`, `other`; plus lower-layer categories when applicable.
 
 ## Recovery behavior
 
